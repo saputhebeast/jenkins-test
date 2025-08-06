@@ -1,55 +1,46 @@
 pipeline {
     agent any
     
-    tools {
-        nodejs 'NodeJS'
-    }
-    
     stages {
+        stage('Check Environment') {
+            steps {
+                echo '🔍 Checking environment...'
+                sh 'node --version || echo "Node.js not found"'
+                sh 'npm --version || echo "NPM not found"'
+            }
+        }
+        
         stage('Install Dependencies') {
             steps {
-                echo 'Installing dependencies...'
+                echo '📦 Installing dependencies...'
                 sh 'npm install'
             }
         }
         
         stage('Run Tests') {
             steps {
-                echo 'Running tests...'
+                echo '🧪 Running tests...'
                 sh 'npm test'
-            }
-            post {
-                always {
-                    publishTestResults testResultsPattern: 'coverage/junit.xml'
-                    publishHTML([
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: 'coverage',
-                        reportFiles: 'index.html',
-                        reportName: 'Coverage Report'
-                    ])
-                }
             }
         }
         
-        stage('Build') {
+        stage('Build Complete') {
             steps {
-                echo 'Building application...'
-                sh 'echo "Build completed successfully"'
+                echo '✅ Build completed successfully!'
+                sh 'ls -la'
             }
         }
     }
     
     post {
         success {
-            echo 'Pipeline completed successfully!'
+            echo '🎉 Pipeline completed successfully!'
         }
         failure {
-            echo 'Pipeline failed!'
+            echo '❌ Pipeline failed!'
         }
         always {
-            echo 'Pipeline finished.'
+            echo '🏁 Pipeline finished.'
         }
     }
 }
