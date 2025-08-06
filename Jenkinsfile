@@ -1,55 +1,83 @@
 pipeline {
     agent any
     
-    tools {
-        nodejs 'NodeJS'
+    environment {
+        GITHUB_TOKEN = credentials('github-token')
     }
     
     stages {
+        stage('Checkout') {
+            steps {
+                echo "🔄 Checking out code..."
+                script {
+                    if (env.CHANGE_ID) {
+                        updateGitHubStatus('pending', 'Jenkins build started 🚀')
+                    }
+                }
+            }
+        }
+        
         stage('Install Dependencies') {
             steps {
-                echo 'Installing dependencies...'
-                sh 'npm install'
+                echo "📦 Installing dependencies..."
+                sh '''
+                    node --version
+                    npm --version
+                    npm install
+                '''
             }
         }
         
         stage('Run Tests') {
             steps {
-                echo 'Running tests...'
+                echo "🧪 Running tests..."
                 sh 'npm test'
-            }
-            post {
-                always {
-                    publishTestResults testResultsPattern: 'coverage/junit.xml'
-                    publishHTML([
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: 'coverage',
-                        reportFiles: 'index.html',
-                        reportName: 'Coverage Report'
-                    ])
-                }
             }
         }
         
-        stage('Build') {
+        stage('Deploy') {
+            when {
+                allOf {
+                    branch 'main'
+                    not { changeRequest() }
+                }
+            }
             steps {
-                echo 'Building application...'
-                sh 'echo "Build completed successfully"'
+                echo "🚀 Deploying to production..."
+                echo "This would deploy your app!"
             }
         }
     }
     
     post {
         success {
-            echo 'Pipeline completed successfully!'
+            script {
+                if (env.CHANGE_ID) {
+                    updateGitHubStatus('success', 'All tests passed! ✅ Ready to merge')
+                }
+            }
+            echo "✅ Pipeline completed successfully!"
         }
         failure {
-            echo 'Pipeline failed!'
-        }
-        always {
-            echo 'Pipeline finished.'
+            script {
+                if (env.CHANGE_ID) {
+                    updateGitHubStatus('failure', 'Build failed ❌ Check logs')
+                }
+            }
+            echo "❌ Pipeline failed!"
         }
     }
+}
+
+def updateGitHubStatus(state, description) {
+    if (!env.CHANGE_ID) return
+    
+    sh """
+        curl -X POST \
+        -H "Authorization: token ${GITHUB_TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d '{"state": "${state}", "description": "${description}", "context": "jenkins", "target_url": "${BUILD_URL}"}' \
+        "https://api.github.com/repos/saputhebeast/jenkins-test/statuses/${env.GIT_COMMIT}"
+    """
+    echo "📝 GitHub status updated: ${description}"
 }
