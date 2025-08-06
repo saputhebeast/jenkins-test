@@ -1,4 +1,4 @@
-# Jenkins Tests
+# Jenkins Test
 
 A simple Node.js project with test cases for Jenkins pipeline testing.
 
